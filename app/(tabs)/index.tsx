@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Keyboard, Pressable, Share, StatusBar, StyleSheet, Text, Vibration, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+// ...
+
+
 
 const hour = [...Array(24).keys()].map((index) => ({
   value: index,
@@ -149,13 +153,13 @@ export default function SharedTimer() {
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
 
-        <View style={styles.inputRow}>
+        <View style={styles.inputContainer}>
           {isActive
             ? <>
-            <Text style={{ color: '#B9AAFF', fontSize: 16, lineHeight: 16 * 1.1, fontVariant: ['tabular-nums'] }}>{duration ? `Duration: ${displayDuration()}` : 'Set Duration'}</Text>
-            <CircularTimer displayEndTime={displayEndTime()} displayTimeLeft={displayTimeLeft(remainingSecs)} remainingSecs={remainingSecs} totalSecs={duration}></CircularTimer>
+              <Text style={{ color: '#B9AAFF', fontSize: 16, lineHeight: 16 * 1.1, fontVariant: ['tabular-nums'], paddingBottom: 25 }}>{duration ? `Duration: ${displayDuration()}` : 'Set Duration'}</Text>
+              <CircularTimer displayEndTime={displayEndTime()} displayTimeLeft={displayTimeLeft(remainingSecs)} remainingSecs={remainingSecs} totalSecs={duration}></CircularTimer>
             </>
-            : <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center', paddingLeft: 30}}>
+            : <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center', paddingLeft: 30 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'center' }}>
                 <TimeWheelInput value={hours} setValue={setHours} values={hour} label='timmar' borderRadiusLeft={15} width={100} />
                 <TimeWheelInput value={minutes} setValue={setMinutes} values={min} label='min' width={100} />
@@ -165,23 +169,24 @@ export default function SharedTimer() {
           }
         </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: '80%', marginTop: 20 }}>
+        <View style={styles.outerButtonContainer}>
+          <View style={styles.innerButtonContainer}>
 
-          {/* Controls */}
-          <Pressable style={styles.button} onPress={startTimer}>
-            <Text style={styles.buttonText}>Start</Text>
-          </Pressable>
+            {/* Controls */}
+            <Pressable style={styles.button} onPress={startTimer}>
+              <Text style={styles.buttonText}>Start</Text>
+            </Pressable>
 
-          <Pressable
-            style={[styles.button, styles.resetButton]}
-            // onPress={() => {
-            //   alarmAudioPlayer.seekTo(0);
-            //   alarmAudioPlayer.play();
-            // }}
-            onPress={resetTimer}
-          >
-            <Text style={[styles.buttonText, styles.resetText]}>Reset</Text>
-          </Pressable>
+            <Pressable
+              style={[styles.button, styles.resetButton]}
+              // onPress={() => {
+              //   alarmAudioPlayer.seekTo(0);
+              //   alarmAudioPlayer.play();
+              // }}
+              onPress={resetTimer}
+            >
+              <Text style={[styles.buttonText, styles.resetText]}>Reset</Text>
+            </Pressable>
           </View>
 
           <Pressable
@@ -189,8 +194,9 @@ export default function SharedTimer() {
             onPress={shareTimer}
             disabled={!duration}
           >
-            <Text style={[styles.buttonText, styles.shareText]}>Share</Text>
+            <Ionicons name="share-outline" color="#2ECC71" size={60} />
           </Pressable>
+        </View>
       </View>
     </Pressable >
   );
@@ -203,10 +209,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#0f0e11ff'
   },
-  inputRow: {
+  inputContainer: {
+    flex: 1.5,
     alignItems: 'center',
-    marginBottom: 15,
-    minHeight: 75,
+    justifyContent: 'center',
+    marginTop: 55,
   },
   input: {
     borderBottomWidth: 2,
@@ -216,31 +223,51 @@ const styles = StyleSheet.create({
     width: 60,
     textAlign: 'center',
   },
-  colon: {
-    color: '#FFF',
-    fontSize: 30,
-    marginHorizontal: 5
+  outerButtonContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 100,
+  },
+  innerButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginBottom: 20
   },
   button: {
     borderWidth: 4,
     borderColor: '#B9AAFF',
+    backgroundColor: '#B9AAFF',
     borderRadius: 100,
     width: 90,
     height: 90,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
   },
-  buttonText: { fontSize: 28, color: '#B9AAFF', textAlign: 'center' },
-  shareButton: { 
-    marginTop: 30,
+  buttonText: {
+    fontSize: 28,
+    fontWeight: 900,
+    color: '#0f0e11ff',
+    textAlign: 'center'
+  },
+  shareButton: {
     borderColor: '#2ECC71',
+    backgroundColor: 'transparent',
     width: 150,
     height: 150,
-   },
-  shareText: { color: '#2ECC71' },
-  resetButton: { borderColor: '#FF851B' },
-  resetText: { color: '#FF851B' },
+  },
+  shareText: {
+    color: '#2ECC71'
+  },
+  resetButton: {
+    borderColor: '#FF851B',
+    backgroundColor: 'transparent'
+  },
+  resetText: {
+    fontSize: 26,
+    color: '#FF851B'
+  },
   circleContainer: {
     alignItems: 'center',
     justifyContent: 'center',
