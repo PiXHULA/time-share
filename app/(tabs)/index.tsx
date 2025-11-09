@@ -1,98 +1,248 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, Pressable, Share, StatusBar, StyleSheet, Text, Vibration, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const hour = [...Array(24).keys()].map((index) => ({
+  value: index,
+  label: index.toString(),
+}))
+const min = [...Array(60).keys()].map((index) => ({
+  value: index,
+  label: index.toString(),
+}))
 
-export default function HomeScreen() {
+
+import { useAudioPlayer } from 'expo-audio';
+import * as Linking from 'expo-linking';
+
+import TimeWheelInput from '@/components/time-wheel-input';
+import TimeWheelInputSeconds from '@/components/time-wheel-input-seconds';
+import CircularTimer from '../../components/circular-timer';
+
+const audioSource = require('../../assets/mixkit-data-scaner-2847.mp3');
+
+const formatted = (num: number) => (num < 10 ? `0${num}` : num);
+
+export default function SharedTimer() {
+  const [remainingSecs, setRemainingSecs] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+  const [hours, setHours] = useState(0); //SÄTT IHOP MIG
+  const [minutes, setMinutes] = useState(0); //SÄTT IHOP MIG OCKSÅ
+  const [seconds, setSeconds] = useState(0); //SÄTT IHOP MIG OCKSÅ
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
+
+  const [value, setValue] = useState(0);
+  const [value1, setValue1] = useState(0);
+  const [value2, setValue2] = useState(0);
+
+  const alarmAudioPlayer = useAudioPlayer(audioSource);
+
+  const displayTimeLeft = (time: number) => {
+    const hrs = Math.floor(time / 3600);
+    const mins = Math.floor((time % 3600) / 60);
+    const secs = Math.floor(time % 60);
+    return `${formatted(hrs)}:${formatted(mins)}:${formatted(secs)}`;
+  };
+
+  const displayDuration = () => {
+    if (!duration) return null;
+
+    const hrs = Math.floor(duration / 3600);
+    const mins = Math.floor((duration % 3600) / 60);
+    const secs = Math.floor(duration % 60);
+
+    const parts: string[] = [];
+
+    // Only show hours if > 0
+    if (hrs > 0) parts.push(`${hrs} hour${hrs > 1 ? 's' : ''}`);
+    // Only show minutes if > 0 or if there are hours (so "1 hour 0 min" becomes "1 hour")
+    if (mins > 0 || (hrs > 0 && mins > 0)) parts.push(`${mins} min${mins > 1 ? 's' : ''}`);
+    // Show seconds only if no hours
+    if (hrs === 0 && secs > 0) parts.push(`${secs} sec${secs > 1 ? 's' : ''}`);
+
+    return parts.join(' ');
+  };
+
+  const displayEndTime = () => {
+    let endtime = startTime && duration ? startTime + duration * 1000 : null;
+    return endtime ? `${formatted(new Date(endtime).getHours())}:${formatted(new Date(endtime).getMinutes())}` : null;
+  }
+
+  // ⏱️ Start local timer
+  const startTimer = () => {
+    const total = Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+    if (total <= 0) return;
+    setDuration(total);
+    setStartTime(Date.now());
+    setRemainingSecs(total);
+    setIsActive(true);
+  };
+
+  // 🕊️ Share button
+  const shareTimer = async () => {
+    if (!startTime || !duration) return;
+
+    const link = Linking.createURL('/', {
+      queryParams: {
+        t: startTime.toString(),
+        d: duration.toString(),
+      },
+    });
+
+    await Share.share({
+      message: `Open this link in Expo Go to join my timer:\n\n${link}`,
+    });
+  };
+
+  // 🔗 Handle incoming links (when opened from Expo Go)
+  useEffect(() => {
+    const handleUrl = (event: { url: string }) => {
+      const { queryParams } = Linking.parse(event.url);
+      const t = Number(queryParams?.t);
+      const d = Number(queryParams?.d);
+      if (t && d) {
+        const elapsed = (Date.now() - t) / 1000;
+        const remaining = Math.max(d - elapsed, 0);
+        setRemainingSecs(remaining);
+        setIsActive(true);
+        setStartTime(t);
+        setDuration(d);
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+
+    return () => sub.remove();
+  }, []);
+
+  // ⏳ Countdown logic
+  useEffect(() => {
+    let interval: any;
+    if (isActive && remainingSecs > 0) {
+      interval = setInterval(() => {
+        setRemainingSecs((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setIsActive(false);
+            Vibration.vibrate(2000);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isActive, remainingSecs]);
+
+  const resetTimer = () => {
+    setIsActive(false);
+    setRemainingSecs(0);
+    setDuration(null);
+    setStartTime(null);
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ flex: 1 }} >
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <View style={styles.inputRow}>
+          {isActive
+            ? <>
+            <Text style={{ color: '#B9AAFF', fontSize: 16, lineHeight: 16 * 1.1, fontVariant: ['tabular-nums'] }}>{duration ? `Duration: ${displayDuration()}` : 'Set Duration'}</Text>
+            <CircularTimer displayEndTime={displayEndTime()} displayTimeLeft={displayTimeLeft(remainingSecs)} remainingSecs={remainingSecs} totalSecs={duration}></CircularTimer>
+            </>
+            : <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center', paddingLeft: 30}}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'center' }}>
+                <TimeWheelInput value={hours} setValue={setHours} values={hour} label='timmar' borderRadiusLeft={15} width={100} />
+                <TimeWheelInput value={minutes} setValue={setMinutes} values={min} label='min' width={100} />
+                <TimeWheelInputSeconds value={seconds} setValue={setSeconds} values={min} label='sek' borderRadiusRight={15} />
+              </View>
+            </View>
+          }
+        </View>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: '80%', marginTop: 20 }}>
+
+          {/* Controls */}
+          <Pressable style={styles.button} onPress={startTimer}>
+            <Text style={styles.buttonText}>Start</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.button, styles.resetButton]}
+            // onPress={() => {
+            //   alarmAudioPlayer.seekTo(0);
+            //   alarmAudioPlayer.play();
+            // }}
+            onPress={resetTimer}
+          >
+            <Text style={[styles.buttonText, styles.resetText]}>Reset</Text>
+          </Pressable>
+          </View>
+
+          <Pressable
+            style={[styles.button, styles.shareButton]}
+            onPress={shareTimer}
+            disabled={!duration}
+          >
+            <Text style={[styles.buttonText, styles.shareText]}>Share</Text>
+          </Pressable>
+      </View>
+    </Pressable >
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#0f0e11ff'
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  inputRow: {
+    alignItems: 'center',
+    marginBottom: 15,
+    minHeight: 75,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  input: {
+    borderBottomWidth: 2,
+    borderColor: '#B9AAFF',
+    color: '#FFF',
+    fontSize: 28,
+    width: 60,
+    textAlign: 'center',
+  },
+  colon: {
+    color: '#FFF',
+    fontSize: 30,
+    marginHorizontal: 5
+  },
+  button: {
+    borderWidth: 4,
+    borderColor: '#B9AAFF',
+    borderRadius: 100,
+    width: 90,
+    height: 90,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: { fontSize: 28, color: '#B9AAFF', textAlign: 'center' },
+  shareButton: { 
+    marginTop: 30,
+    borderColor: '#2ECC71',
+    width: 150,
+    height: 150,
+   },
+  shareText: { color: '#2ECC71' },
+  resetButton: { borderColor: '#FF851B' },
+  resetText: { color: '#FF851B' },
+  circleContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
